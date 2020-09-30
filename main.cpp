@@ -23,8 +23,13 @@
 #include "opengl_shader.h"
 
 double zoom_value = 1;
-double delta_x = 0;
-double delta_y = 0;
+double zoom_min_value = 0.001;
+double zoom_max_value = 1000;
+int window_size_x = 1280;
+int window_size_y = 720;
+double x_center = 0;
+double y_center = 0;
+double xpos, ypos;
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -68,10 +73,32 @@ void create_triangle(GLuint &vbo, GLuint &vao, GLuint &ebo)
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    if (zoom_value >= 0.01 and zoom_value <= 100) {
-        zoom_value += yoffset * 0.01;
-        if (zoom_value < 0.01) zoom_value = 0.01;
-        if (zoom_value > 100) zoom_value = 100;
+    float k;
+
+    if (yoffset > 0) {
+        k = 1.1;
+    } else {
+        k = 1 / 1.1;
+    }
+
+    if (zoom_value >= zoom_min_value and zoom_value <= zoom_max_value)
+    {
+        zoom_value *= k;
+        if (zoom_value < zoom_min_value)
+        {
+            zoom_value = zoom_min_value;
+        }
+        else if (zoom_value > zoom_max_value)
+        {
+            zoom_value = zoom_max_value;
+        }
+        else {
+            float x_coord = -1.0f + 2 * (float) xpos / window_size_x;
+            float y_coord = -1.0f + 2 * (float) ypos / window_size_y;
+
+            x_center = x_center + (x_coord / k - x_coord) * zoom_value;
+            y_center = y_center - (y_coord / k - y_coord) * zoom_value;
+        }
     }
 }
 
@@ -91,7 +118,7 @@ int main(int, char **)
    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 
    // Create window with graphics context
-   GLFWwindow *window = glfwCreateWindow(1280, 720, "Dear ImGui - Conan", NULL, NULL);
+   GLFWwindow *window = glfwCreateWindow(window_size_x, window_size_y, "Dear ImGui - Conan", NULL, NULL);
    if (window == NULL)
       return 1;
    glfwMakeContextCurrent(window);
@@ -143,18 +170,19 @@ int main(int, char **)
       ImGui::Begin("Fractal settings: radius and iterations");
       static float R = 5;
       ImGui::SliderFloat("R_value", &R, 1, 25);
-      static int n = 400;
+      static int n = 30;
       ImGui::SliderInt("n", &n, 1, 1000);
       ImGui::End();
 
-       double xpos, ypos;
        glfwGetCursorPos(window ,&xpos, &ypos);
+
 
        ImVec2 size = io.DisplaySize;
        ImVec2 mouse_delta = ImGui::GetMouseDragDelta();
 
-       delta_x += mouse_delta.x / size.x;
-       delta_y += mouse_delta.y / size.y;
+       x_center -= mouse_delta.x / size.x * 2 * zoom_value;
+       y_center += mouse_delta.y / size.y * 2 * zoom_value;
+
 
        ImGui::ResetMouseDragDelta();
 
@@ -163,11 +191,8 @@ int main(int, char **)
       // Pass the parameters to the shader as uniforms
       triangle_shader.set_uniform("R_value", R);
       triangle_shader.set_uniform("n_value", n);
-      triangle_shader.set_uniform("mouse_pos", (float) xpos, (float) ypos);
+      triangle_shader.set_uniform("center", (float) x_center, (float) y_center);
       triangle_shader.set_uniform("zoom", (float) zoom_value);
-      triangle_shader.set_uniform("delta", (float) delta_x, (float) delta_y);
-      triangle_shader.set_uniform("size", (float) size.x, (float) size.y);
-      triangle_shader.set_uniform("pos", (float) (-1 + 2 * xpos / size.x), (float) (-1 + 2 * ypos / size.y));
 
 
       auto model = glm::rotate(glm::mat4(1), glm::radians(0.0f), glm::vec3(0, 1, 0));

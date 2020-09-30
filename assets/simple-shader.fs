@@ -10,32 +10,25 @@ struct vx_output_t
 
 in vx_output_t v_out;
 
-uniform vec3 u_color;
-uniform float u_time;
 uniform float zoom;
-uniform vec2 delta;
+uniform vec2 center;
 uniform float R_value;
 uniform int n_value;
-uniform vec2 pos;
-uniform vec2 size;
 
 void main()
 {
-    float a_x = zoom;
-    float a_y = zoom;
-    float x_center = delta.x + pos.x - pos.x / zoom;
-    float y_center = delta.y + pos.y - pos.y / zoom;
     int k = 1;
     float n = n_value;
-    float x = x_center + v_out.position.x * a_x;
-    float y = y_center + v_out.position.y * a_y;
     float R = R_value;
-    float cx = x;
-    float cy = y;
+
+    float x = center.x + v_out.position.x * zoom;
+    float y = center.y + v_out.position.y * zoom;
     float new_x = 0.0;
     float new_y = 0.0;
+    float cx = x;
+    float cy = y;
 
-    while ( k <= n) {
+    while (k <= n) {
         if (x * x + y * y > R) break;
 
         new_x = x * x - y * y + cx;
@@ -46,6 +39,7 @@ void main()
     }
 
     vec3 color;
+
     if (k <= n / 4) {
     color = vec3(1.0, 0, 0);
     } else if (k <= n / 4 * 2){
@@ -56,5 +50,5 @@ void main()
     color = vec3(1, 1, 1);
     }
 
-    o_frag_color = vec4(color, 1.0);
+    o_frag_color = vec4(color * k / n, 1.0);
 }
