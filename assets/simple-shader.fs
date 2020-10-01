@@ -14,6 +14,7 @@ uniform float zoom;
 uniform vec2 center;
 uniform float R_value;
 uniform int n_value;
+uniform sampler1D tex;
 
 void main()
 {
@@ -38,17 +39,5 @@ void main()
         k++;
     }
 
-    vec3 color;
-
-    if (k <= n / 4) {
-    color = vec3(1.0, 0, 0);
-    } else if (k <= n / 4 * 2){
-     color = vec3(0, 1.0, 0);
-    } else if (k <= n / 4 * 3){
-    color = vec3(0, 0, 1.0);
-    } else {
-    color = vec3(1, 1, 1);
-    }
-
-    o_frag_color = vec4(color * k / n, 1.0);
+    o_frag_color = texture(tex, 1.0 * k / n);
 }

@@ -36,7 +36,7 @@ static void glfw_error_callback(int error, const char *description)
    std::cerr << fmt::format("Glfw Error {}: {}\n", error, description);
 }
 
-void create_triangle(GLuint &vbo, GLuint &vao, GLuint &ebo)
+void create_triangle(GLuint &vbo, GLuint &vao, GLuint &ebo, GLuint &tex, float texture1D [])
 {
    // create the triangle
    float triangle_vertices[] = {
@@ -59,16 +59,25 @@ void create_triangle(GLuint &vbo, GLuint &vao, GLuint &ebo)
     glGenBuffers(1, &vbo);
     glGenBuffers(1, &ebo);
     glBindVertexArray(vao);
+
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(triangle_vertices), triangle_vertices, GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(triangle_indices), triangle_indices, GL_STATIC_DRAW);
+
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_1D, tex);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, 4, 0, GL_RGB, GL_FLOAT, texture1D);
+    glBindTexture(GL_TEXTURE_1D, 0);
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
@@ -93,8 +102,8 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
             zoom_value = zoom_max_value;
         }
         else {
-            float x_coord = -1.0f + 2 * (float) xpos / window_size_x;
-            float y_coord = -1.0f + 2 * (float) ypos / window_size_y;
+            float x_coord = -1.0f + 2 * (float) xpos / (float) window_size_x;
+            float y_coord = -1.0f + 2 * (float) ypos / (float) window_size_y;
 
             x_center = x_center + (x_coord / k - x_coord) * zoom_value;
             y_center = y_center - (y_coord / k - y_coord) * zoom_value;
@@ -131,9 +140,16 @@ int main(int, char **)
       return 1;
    }
 
+    float texture1D [] = {
+           20 / 255.0f, 20 / 255.0f, 20 / 255.0f,
+           255 / 255.0f, 100 / 255.0f, 255 / 255.0f,
+           100 / 255.0f, 255 / 255.0f, 100 / 255.0f,
+           200 / 255.0f, 200 / 255.0f, 200 / 255.0f
+    };
+
    // create our geometries
-   GLuint vbo, vao, ebo;
-   create_triangle(vbo, vao, ebo);
+   GLuint vbo, vao, ebo, tex;
+   create_triangle(vbo, vao, ebo, tex, texture1D);
 
    // init shader
    shader_t triangle_shader("simple-shader.vs", "simple-shader.fs");
@@ -194,15 +210,18 @@ int main(int, char **)
       triangle_shader.set_uniform("center", (float) x_center, (float) y_center);
       triangle_shader.set_uniform("zoom", (float) zoom_value);
 
-
       auto model = glm::rotate(glm::mat4(1), glm::radians(0.0f), glm::vec3(0, 1, 0));
       auto view = glm::lookAt<float>(glm::vec3(0, 0, -1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
       auto projection = glm::perspective<float>(90, 1, 0.1, 100);
       auto mvp = projection * view * model;
       //glm::mat4 identity(1.0); 
       //mvp = identity;
-      triangle_shader.set_uniform("u_mvp", glm::value_ptr(mvp));
+      //triangle_shader.set_uniform("u_mvp", glm::value_ptr(mvp));
 
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_1D, tex);
+      glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB, 4, 0, GL_RGB, GL_FLOAT, texture1D);
+      triangle_shader.set_uniform("tex", 0);
 
       // Bind triangle shader
       triangle_shader.use();
